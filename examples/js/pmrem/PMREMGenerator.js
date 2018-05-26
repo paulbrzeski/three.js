@@ -53,7 +53,7 @@ THREE.PMREMGenerator = function ( sourceTexture, samplesPerLevel, resolution ) {
 
 	this.shader = this.getShader();
 	this.shader.defines[ 'SAMPLES_PER_LEVEL' ] = this.samplesPerLevel;
-	this.planeMesh = new THREE.Mesh( new THREE.PlaneGeometry( 2, 2, 0 ), this.shader );
+	this.planeMesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2, 0 ), this.shader );
 	this.planeMesh.material.side = THREE.DoubleSide;
 	this.scene = new THREE.Scene();
 	this.scene.add( this.planeMesh );
@@ -138,7 +138,7 @@ THREE.PMREMGenerator.prototype = {
 
 	getShader: function () {
 
-		return new THREE.ShaderMaterial( {
+		var shaderMaterial = new THREE.ShaderMaterial( {
 
 			defines: {
 				"SAMPLES_PER_LEVEL": 20,
@@ -268,6 +268,23 @@ THREE.PMREMGenerator.prototype = {
 			blendEquation: THREE.AddEquation
 
 		} );
+
+		shaderMaterial.type = 'PMREMGenerator';
+
+		return shaderMaterial;
+
+	},
+
+	dispose: function () {
+
+		for ( var i = 0, l = this.cubeLods.length; i < l; i ++ ) {
+
+			this.cubeLods[ i ].dispose();
+
+		}
+
+		this.planeMesh.geometry.dispose();
+		this.planeMesh.material.dispose();
 
 	}
 

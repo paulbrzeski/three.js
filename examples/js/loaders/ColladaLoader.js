@@ -1018,7 +1018,17 @@ THREE.ColladaLoader.prototype = {
 
 		function getImage( id ) {
 
-			return getBuild( library.images[ id ], buildImage );
+			var data = library.images[ id ];
+
+			if ( data !== undefined ) {
+
+				return getBuild( data, buildImage );
+
+			}
+
+			console.warn( 'THREE.ColladaLoader: Couldn\'t find image with ID:', id );
+
+			return null;
 
 		}
 
@@ -1459,7 +1469,7 @@ THREE.ColladaLoader.prototype = {
 			function getTexture( textureObject ) {
 
 				var sampler = effect.profile.samplers[ textureObject.id ];
-				var image;
+				var image = null;
 
 				// get image
 
@@ -1477,7 +1487,7 @@ THREE.ColladaLoader.prototype = {
 
 				// create texture if image is avaiable
 
-				if ( image !== undefined ) {
+				if ( image !== null ) {
 
 					var texture = textureLoader.load( image );
 
@@ -1504,7 +1514,7 @@ THREE.ColladaLoader.prototype = {
 
 				} else {
 
-					console.error( 'THREE.ColladaLoader: Unable to load texture with ID:', textureObject.id );
+					console.warn( 'THREE.ColladaLoader: Couldn\'t create texture with ID:', textureObject.id );
 
 					return null;
 
@@ -1529,12 +1539,11 @@ THREE.ColladaLoader.prototype = {
 						if ( parameter.texture ) material.specularMap = getTexture( parameter.texture );
 						break;
 					case 'shininess':
-						if ( parameter.float && material.shininess )
-							material.shininess = parameter.float;
+						if ( parameter.float && material.shininess ) material.shininess = parameter.float;
 						break;
 					case 'emission':
-						if ( parameter.color && material.emissive )
-							material.emissive.fromArray( parameter.color );
+						if ( parameter.color && material.emissive ) material.emissive.fromArray( parameter.color );
+						if ( parameter.texture ) material.emissiveMap = getTexture( parameter.texture );
 						break;
 
 				}
@@ -1574,7 +1583,8 @@ THREE.ColladaLoader.prototype = {
 
 				if ( transparent.data.texture ) {
 
-					material.alphaMap = getTexture( transparent.data.texture );
+					// we do not set an alpha map (see #13792)
+
 					material.transparent = true;
 
 				} else {
@@ -2676,6 +2686,82 @@ THREE.ColladaLoader.prototype = {
 
 		}
 
+		// physics
+
+		function parsePhysicsModel( xml ) {
+
+			var data = {
+				name: xml.getAttribute( 'name' ) || '',
+				rigidBodies: {}
+			};
+
+			for ( var i = 0; i < xml.childNodes.length; i ++ ) {
+
+				var child = xml.childNodes[ i ];
+
+				if ( child.nodeType !== 1 ) continue;
+
+				switch ( child.nodeName ) {
+
+					case 'rigid_body':
+						data.rigidBodies[ child.getAttribute( 'name' ) ] = {};
+						parsePhysicsRigidBody( child, data.rigidBodies[ child.getAttribute( 'name' ) ] );
+						break;
+
+				}
+
+			}
+
+			library.physicsModels[ xml.getAttribute( 'id' ) ] = data;
+
+		}
+
+		function parsePhysicsRigidBody( xml, data ) {
+
+			for ( var i = 0; i < xml.childNodes.length; i ++ ) {
+
+				var child = xml.childNodes[ i ];
+
+				if ( child.nodeType !== 1 ) continue;
+
+				switch ( child.nodeName ) {
+
+					case 'technique_common':
+						parsePhysicsTechniqueCommon( child, data );
+						break;
+
+				}
+
+			}
+
+		}
+
+		function parsePhysicsTechniqueCommon( xml, data ) {
+
+			for ( var i = 0; i < xml.childNodes.length; i ++ ) {
+
+				var child = xml.childNodes[ i ];
+
+				if ( child.nodeType !== 1 ) continue;
+
+				switch ( child.nodeName ) {
+
+					case 'inertia':
+						data.inertia = parseFloats( child.textContent );
+						break;
+
+					case 'mass':
+						data.mass = parseFloats( child.textContent )[0];
+						break;
+
+				}
+
+			}
+
+		}
+
+		// scene
+
 		function parseKinematicsScene( xml ) {
 
 			var data = {
@@ -3272,7 +3358,7 @@ THREE.ColladaLoader.prototype = {
 						// and weights defined for it. But we still have to add the bone to the sorted bone list in order to
 						// ensure a correct animation of the model.
 
-						 boneInverse = new THREE.Matrix4();
+						boneInverse = new THREE.Matrix4();
 
 					}
 
@@ -3634,19 +3720,13 @@ THREE.ColladaLoader.prototype = {
 
 		}
 
-		console.time( 'THREE.ColladaLoader' );
-
 		if ( text.length === 0 ) {
 
 			return { scene: new THREE.Scene() };
 
 		}
 
-		console.time( 'THREE.ColladaLoader: DOMParser' );
-
 		var xml = new DOMParser().parseFromString( text, 'application/xml' );
-
-		console.timeEnd( 'THREE.ColladaLoader: DOMParser' );
 
 		var collada = getElementsByTagName( xml, 'COLLADA' )[ 0 ];
 
@@ -3680,10 +3760,9 @@ THREE.ColladaLoader.prototype = {
 			nodes: {},
 			visualScenes: {},
 			kinematicsModels: {},
+			physicsModels: {},
 			kinematicsScenes: {}
 		};
-
-		console.time( 'THREE.ColladaLoader: Parse' );
 
 		parseLibrary( collada, 'library_animations', 'animation', parseAnimation );
 		parseLibrary( collada, 'library_animation_clips', 'animation_clip', parseAnimationClip );
@@ -3697,11 +3776,8 @@ THREE.ColladaLoader.prototype = {
 		parseLibrary( collada, 'library_nodes', 'node', parseNode );
 		parseLibrary( collada, 'library_visual_scenes', 'visual_scene', parseVisualScene );
 		parseLibrary( collada, 'library_kinematics_models', 'kinematics_model', parseKinematicsModel );
+		parseLibrary( collada, 'library_physics_models', 'physics_model', parsePhysicsModel );
 		parseLibrary( collada, 'scene', 'instance_kinematics_scene', parseKinematicsScene );
-
-		console.timeEnd( 'THREE.ColladaLoader: Parse' );
-
-		console.time( 'THREE.ColladaLoader: Build' );
 
 		buildLibrary( library.animations, buildAnimation );
 		buildLibrary( library.clips, buildAnimationClip );
@@ -3713,8 +3789,6 @@ THREE.ColladaLoader.prototype = {
 		buildLibrary( library.lights, buildLight );
 		buildLibrary( library.geometries, buildGeometry );
 		buildLibrary( library.visualScenes, buildVisualScene );
-
-		console.timeEnd( 'THREE.ColladaLoader: Build' );
 
 		setupAnimations();
 		setupKinematics();
@@ -3728,8 +3802,6 @@ THREE.ColladaLoader.prototype = {
 		}
 
 		scene.scale.multiplyScalar( asset.unit );
-
-		console.timeEnd( 'THREE.ColladaLoader' );
 
 		return {
 			animations: animations,

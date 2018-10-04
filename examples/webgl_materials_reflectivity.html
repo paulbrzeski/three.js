@@ -35,7 +35,7 @@
 		<script src="js/loaders/RGBELoader.js"></script>
 		<script src="js/loaders/HDRCubeTextureLoader.js"></script>
 
-		<script src="js/Detector.js"></script>
+		<script src="js/WebGL.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 
 		<script src="js/pmrem/PMREMGenerator.js"></script>
@@ -54,7 +54,11 @@
 		<script src="js/loaders/OBJLoader.js"></script>
 		<script>
 
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+			}
 
 			var container, stats;
 			var params = {
@@ -83,9 +87,9 @@
 				camera.position.set( 0.0, -10, 20 * 3.5 );
 
 				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x000000 );
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setClearColor( new THREE.Color( 0x000000 ) );
 
 				gemBackMaterial = new THREE.MeshPhysicalMaterial( {
 					map: null,
@@ -95,7 +99,6 @@
 					opacity: 0.5,
 					side: THREE.BackSide,
 					transparent: true,
-					shading: THREE.SmoothShading,
 					envMapIntensity: 5,
 					premultipliedAlpha: true
 					// TODO: Add custom blend mode that modulates background color by this materials color.
@@ -109,7 +112,6 @@
 					opacity: 0.15,
 					side: THREE.FrontSide,
 					transparent: true,
-					shading: THREE.SmoothShading,
 					envMapIntensity: 5,
 					premultipliedAlpha: true
 				} );
@@ -168,6 +170,10 @@
 					gemFrontMaterial.envMap = gemBackMaterial.envMap = hdrCubeRenderTarget.texture;
 					gemFrontMaterial.needsUpdate = gemBackMaterial.needsUpdate = true;
 
+					hdrCubeMap.dispose();
+					pmremGenerator.dispose();
+					pmremCubeUVPacker.dispose();
+
 				} );
 
 
@@ -204,8 +210,6 @@
 				container.appendChild( stats.dom );
 
 				controls = new THREE.OrbitControls( camera, renderer.domElement );
-				controls.target.set( 0, 0, 0 );
-				controls.update();
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -263,8 +267,6 @@
 				}
 
 				renderer.toneMappingExposure = params.exposure;
-
-				var timer = Date.now() * 0.00025;
 
 				camera.lookAt( scene.position );
 

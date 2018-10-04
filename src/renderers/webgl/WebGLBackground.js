@@ -2,26 +2,24 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-import { BackSide } from '../../constants';
-import { OrthographicCamera } from '../../cameras/OrthographicCamera';
-import { PerspectiveCamera } from '../../cameras/PerspectiveCamera';
-import { BoxBufferGeometry } from '../../geometries/BoxGeometry';
-import { PlaneBufferGeometry } from '../../geometries/PlaneGeometry';
-import { MeshBasicMaterial } from '../../materials/MeshBasicMaterial';
-import { ShaderMaterial } from '../../materials/ShaderMaterial';
-import { Color } from '../../math/Color';
-import { Mesh } from '../../objects/Mesh';
-import { ShaderLib } from '../shaders/ShaderLib';
+import { BackSide, FrontSide } from '../../constants.js';
+import { BoxBufferGeometry } from '../../geometries/BoxGeometry.js';
+import { PlaneBufferGeometry } from '../../geometries/PlaneGeometry.js';
+import { ShaderMaterial } from '../../materials/ShaderMaterial.js';
+import { Color } from '../../math/Color.js';
+import { Mesh } from '../../objects/Mesh.js';
+import { ShaderLib } from '../shaders/ShaderLib.js';
+import { UniformsUtils } from '../shaders/UniformsUtils.js';
 
 function WebGLBackground( renderer, state, objects, premultipliedAlpha ) {
 
 	var clearColor = new Color( 0x000000 );
 	var clearAlpha = 0;
 
-	var planeCamera, planeMesh;
-	var boxCamera, boxMesh;
+	var planeMesh;
+	var boxMesh;
 
-	function render( scene, camera, forceClear ) {
+	function render( renderList, scene, camera, forceClear ) {
 
 		var background = scene.background;
 
@@ -44,55 +42,64 @@ function WebGLBackground( renderer, state, objects, premultipliedAlpha ) {
 
 		if ( background && background.isCubeTexture ) {
 
-			if ( boxCamera === undefined ) {
-
-				boxCamera = new PerspectiveCamera();
+			if ( boxMesh === undefined ) {
 
 				boxMesh = new Mesh(
-					new BoxBufferGeometry( 5, 5, 5 ),
+					new BoxBufferGeometry( 1, 1, 1 ),
 					new ShaderMaterial( {
-						uniforms: ShaderLib.cube.uniforms,
+						uniforms: UniformsUtils.clone( ShaderLib.cube.uniforms ),
 						vertexShader: ShaderLib.cube.vertexShader,
 						fragmentShader: ShaderLib.cube.fragmentShader,
 						side: BackSide,
-						depthTest: false,
+						depthTest: true,
 						depthWrite: false,
 						fog: false
 					} )
 				);
 
+				boxMesh.geometry.removeAttribute( 'normal' );
+				boxMesh.geometry.removeAttribute( 'uv' );
+
+				boxMesh.onBeforeRender = function ( renderer, scene, camera ) {
+
+					this.matrixWorld.copyPosition( camera.matrixWorld );
+
+				};
+
+				objects.update( boxMesh );
+
 			}
 
-			boxCamera.projectionMatrix.copy( camera.projectionMatrix );
+			boxMesh.material.uniforms.tCube.value = background;
 
-			boxCamera.matrixWorld.extractRotation( camera.matrixWorld );
-			boxCamera.matrixWorldInverse.getInverse( boxCamera.matrixWorld );
-
-			boxMesh.material.uniforms[ "tCube" ].value = background;
-			boxMesh.modelViewMatrix.multiplyMatrices( boxCamera.matrixWorldInverse, boxMesh.matrixWorld );
-
-			objects.update( boxMesh );
-
-			renderer.renderBufferDirect( boxCamera, null, boxMesh.geometry, boxMesh.material, boxMesh, null );
+			renderList.push( boxMesh, boxMesh.geometry, boxMesh.material, 0, null );
 
 		} else if ( background && background.isTexture ) {
 
-			if ( planeCamera === undefined ) {
-
-				planeCamera = new OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+			if ( planeMesh === undefined ) {
 
 				planeMesh = new Mesh(
 					new PlaneBufferGeometry( 2, 2 ),
-					new MeshBasicMaterial( { depthTest: false, depthWrite: false, fog: false } )
+					new ShaderMaterial( {
+						uniforms: UniformsUtils.clone( ShaderLib.background.uniforms ),
+						vertexShader: ShaderLib.background.vertexShader,
+						fragmentShader: ShaderLib.background.fragmentShader,
+						side: FrontSide,
+						depthTest: true,
+						depthWrite: false,
+						fog: false
+					} )
 				);
+
+				planeMesh.geometry.removeAttribute( 'normal' );
+
+				objects.update( planeMesh );
 
 			}
 
-			planeMesh.material.map = background;
+			planeMesh.material.uniforms.t2D.value = background;
 
-			objects.update( planeMesh );
-
-			renderer.renderBufferDirect( planeCamera, null, planeMesh.geometry, planeMesh.material, planeMesh, null );
+			renderList.push( planeMesh, planeMesh.geometry, planeMesh.material, 0, null );
 
 		}
 

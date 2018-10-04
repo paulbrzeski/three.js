@@ -45,13 +45,17 @@
 
 		<script src="js/loaders/OBJLoader.js"></script>
 
-		<script src="js/Detector.js"></script>
+		<script src="js/WebGL.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 		<script src='js/libs/dat.gui.min.js'></script>
 
 		<script>
 
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+			}
 
 			var stats;
 
@@ -61,6 +65,12 @@
 				material: 'normal',
 				camera: 'perspective',
 				side: 'double'
+			};
+
+			var sides = {
+				'front': THREE.FrontSide,
+				'back': THREE.BackSide,
+				'double': THREE.DoubleSide
 			};
 
 			var cameraOrtho, cameraPerspective;
@@ -166,7 +176,7 @@
 					normalMap: normalMap,
 					normalScale: new THREE.Vector2( 1, - 1 ),
 
-					//shading: THREE.FlatShading,
+					//flatShading: true,
 
 					side: THREE.DoubleSide
 				} );
@@ -199,7 +209,7 @@
 					normalMap: normalMap,
 					normalScale: new THREE.Vector2( 1, - 1 ),
 
-					//shading: THREE.FlatShading,
+					//flatShading: true,
 
 					side: THREE.DoubleSide
 				} );
@@ -256,9 +266,6 @@
 
 				requestAnimationFrame( animate );
 
-				controlsOrtho.update();
-				controlsPerspective.update();
-
 				stats.begin();
 				render();
 				stats.end();
@@ -280,7 +287,7 @@
 
 					}
 
-					if ( params.side !== material.side ) {
+					if ( sides[ params.side ] !== material.side ) {
 
 						switch ( params.side ) {
 

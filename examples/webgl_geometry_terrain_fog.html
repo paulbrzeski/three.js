@@ -37,17 +37,15 @@
 		<script src="../build/three.js"></script>
 
 		<script src="js/controls/FirstPersonControls.js"></script>
-
-		<script src="js/ImprovedNoise.js"></script>
-
-		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
+		<script src="js/ImprovedNoise.js"></script>
+		<script src="js/WebGL.js"></script>
 
 		<script>
 
-			if ( ! Detector.webgl ) {
+			if ( WEBGL.isWebGLAvailable() === false ) {
 
-				Detector.addGetWebGLMessage();
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
 				document.getElementById( 'container' ).innerHTML = "";
 
 			}
@@ -77,6 +75,7 @@
 				controls.lookSpeed = 0.1;
 
 				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xefd1b5 );
 				scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
 
 				var data = generateHeight( worldWidth, worldDepth );
@@ -102,7 +101,6 @@
 				scene.add( mesh );
 
 				renderer = new THREE.WebGLRenderer();
-				renderer.setClearColor( 0xefd1b5 );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -155,8 +153,7 @@
 
 			function generateTexture( data, width, height ) {
 
-				var canvas, canvasScaled, context, image, imageData,
-				level, diff, vector3, sun, shade;
+				var canvas, canvasScaled, context, image, imageData, vector3, sun, shade;
 
 				vector3 = new THREE.Vector3( 0, 0, 0 );
 

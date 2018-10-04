@@ -44,7 +44,7 @@
 		<script src="js/postprocessing/MaskPass.js"></script>
 		<script src="js/postprocessing/BokehPass.js"></script>
 
-		<script src="js/Detector.js"></script>
+		<script src="js/WebGL.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 
 		<script src='js/libs/dat.gui.min.js'></script>
@@ -57,7 +57,11 @@
 
 		<script>
 
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+			}
 
 			var container, stats;
 			var camera, scene, renderer,
@@ -88,12 +92,10 @@
 
 				scene = new THREE.Scene();
 
-				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( width, height );
 				container.appendChild( renderer.domElement );
-
-				renderer.sortObjects = false;
 
 				var path = "textures/cube/SwedishRoyalCastle/";
 				var format = '.jpg';
@@ -105,16 +107,14 @@
 
 				var textureCube = new THREE.CubeTextureLoader().load( urls );
 
-				parameters = { color: 0xff1100, envMap: textureCube, shading: THREE.FlatShading };
+				parameters = { color: 0xff1100, envMap: textureCube };
 				cubeMaterial = new THREE.MeshBasicMaterial( parameters );
 
 				singleMaterial = false;
 
 				if( singleMaterial ) zmaterial = [ cubeMaterial ];
 
-				var geo = new THREE.SphereGeometry( 1, 20, 10 );
-
-				var start = Date.now();
+				var geo = new THREE.SphereBufferGeometry( 1, 20, 10 );
 
 				var xgrid = 14,
 					ygrid = 9,
@@ -138,7 +138,7 @@
 					} else {
 
 						mesh = new THREE.Mesh( geo, new THREE.MeshBasicMaterial( parameters ) );
-						materials[ count ] = mesh.material
+						materials[ count ] = mesh.material;
 
 					}
 
@@ -159,8 +159,6 @@
 
 				}
 
-				//console.log("init time: ", Date.now() - start );
-
 				scene.matrixAutoUpdate = false;
 
 				initPostprocessing();
@@ -178,8 +176,8 @@
 
 				var effectController  = {
 
-					focus: 		1.0,
-					aperture:	0.025,
+					focus: 		500.0,
+					aperture:	5,
 					maxblur:	1.0
 
 				};
@@ -187,17 +185,18 @@
 				var matChanger = function( ) {
 
 					postprocessing.bokeh.uniforms[ "focus" ].value = effectController.focus;
-					postprocessing.bokeh.uniforms[ "aperture" ].value = effectController.aperture;
+					postprocessing.bokeh.uniforms[ "aperture" ].value = effectController.aperture * 0.00001;
 					postprocessing.bokeh.uniforms[ "maxblur" ].value = effectController.maxblur;
 
 				};
 
 				var gui = new dat.GUI();
-				gui.add( effectController, "focus", 0.0, 3.0, 0.025 ).onChange( matChanger );
-				gui.add( effectController, "aperture", 0.001, 0.2, 0.001 ).onChange( matChanger );
+				gui.add( effectController, "focus", 10.0, 3000.0, 10 ).onChange( matChanger );
+				gui.add( effectController, "aperture", 0, 10, 0.1 ).onChange( matChanger );
 				gui.add( effectController, "maxblur", 0.0, 3.0, 0.025 ).onChange( matChanger );
 				gui.close();
 
+				matChanger();
 			}
 
 			function onDocumentMouseMove( event ) {

@@ -19,18 +19,46 @@
 			</a>
 
 			<div class="filterBlock" >
-				<input type="text" id="filterInput" placeholder="Type to filter">
+				<input type="text" id="filterInput" placeholder="Type to filter" autocorrect="off" autocapitalize="off" spellcheck="false">
 				<a href="#" id="clearFilterButton">x</a>
 			</div>
+
+			<div style="text-align:center">
+				<br />
+				<a href="javascript:setLanguage('en')">en</a> |
+				<a href="javascript:setLanguage('zh')">zh</a>
+			</div>
+
 			<div id="content"></div>
 
 		</div>
 
-		<iframe></iframe>
+		<iframe name="viewer"></iframe>
 
 		<script src="list.js"></script>
 
 		<script>
+
+			var hash = window.location.hash.substring( 1 );
+
+			// Route non-localised api links
+
+			if ( /^(api|manual)/.test( hash ) && /^(api|manual)\/(en|zh)\//.test( hash ) === false ) {
+
+				window.location.hash = hash.replace( /^(api|manual)/, '$1/en' );
+
+			}
+
+			//
+
+			var language = 'en';
+
+			function setLanguage( value ) {
+
+				language = value;
+				createNavigation();
+
+			}
 
 			var panel = document.getElementById( 'panel' );
 			var content = document.getElementById( 'content' );
@@ -43,10 +71,7 @@
 			var titles = {};
 			var categoryElements = [];
 
-
-// ----------------------------------------------------------------------------
-// Initialization
-// ----------------------------------------------------------------------------
+			var navigation;
 
 
 			// Functionality for hamburger button (on small devices)
@@ -79,36 +104,60 @@
 
 			};
 
-
 			// Activate content and title change on browser navigation
 
 			window.onpopstate = createNewIframe;
-
 
 			// Create the navigation panel and configure the iframe
 
 			createNavigation();
 			createNewIframe();
 
+			// Navigation Panel
 
-// ----------------------------------------------------------------------------
-// Navigation Panel
-// ----------------------------------------------------------------------------
+			function createLink( pageName, pageURL ) {
 
+				var link = document.createElement( 'a' );
+				link.href = pageURL + '.html';
+				link.textContent = pageName;
+				link.setAttribute( 'target', 'viewer' );
+				link.addEventListener( 'click', function ( event ) {
 
-			function createNavigation () {
+					if ( event.button !== 0 || event.ctrlKey || event.altKey || event.metaKey ) return;
+
+					window.location.hash = pageURL;
+					panel.classList.add( 'collapsed' );
+
+				} );
+
+				return link;
+
+			}
+
+			function createNavigation() {
+
+				if ( navigation !== undefined ) {
+
+					content.removeChild( navigation );
+
+				}
 
 				// Create the navigation panel using data from list.js
 
-				var navigation = createAndAppendDOMElement( { type: 'div', parent: content } );
+				navigation = document.createElement( 'div' );
+				content.appendChild( navigation );
 
-				for ( var section in list ) {
+				var localList = list[ language ];
+
+				for ( var section in localList ) {
 
 					// Create sections
 
-					var categories = list[ section ];
+					var categories = localList[ section ];
 
-					var sectionHead = createAndAppendDOMElement( { type: 'h2', parent: navigation, content: section } )
+					var sectionHead = document.createElement( 'h2' );
+					sectionHead.textContent = section;
+					navigation.appendChild( sectionHead );
 
 					for ( var category in categories ) {
 
@@ -116,9 +165,15 @@
 
 						var pages = categories[ category ];
 
-						var categoryContainer = createAndAppendDOMElement( { type: 'div', parent: navigation } );
-						var categoryHead = createAndAppendDOMElement( { type: 'h3', parent: categoryContainer, content: category } );
-						var categoryContent = createAndAppendDOMElement( { type: 'ul', parent: categoryContainer } );
+						var categoryContainer = document.createElement( 'div' );
+						navigation.appendChild( categoryContainer );
+
+						var categoryHead = document.createElement( 'h3' );
+						categoryHead.textContent = category;
+						categoryContainer.appendChild( categoryHead );
+
+						var categoryContent = document.createElement( 'ul' );
+						categoryContainer.appendChild( categoryContent );
 
 						for ( var pageName in pages ) {
 
@@ -126,14 +181,13 @@
 
 							var pageURL = pages[ pageName ];
 
-							var listElement = createAndAppendDOMElement( { type: 'li', parent: categoryContent } );
-							var linkElement = createAndAppendDOMElement( { type: 'a', parent: listElement, content: pageName } );
+							// Localisation
 
-							// The href attribute is only used for the option to create a new tab by right click
+							var listElement = document.createElement( 'li' );
+							categoryContent.appendChild( listElement );
 
-							linkElement.setAttribute( 'href', '#' + pageURL );
-
-							addClickHandlers( linkElement, pageURL );
+							var linkElement = createLink( pageName, pageURL )
+							listElement.appendChild( linkElement );
 
 							// Gather the main properties for the current subpage
 
@@ -158,92 +212,15 @@
 
 				}
 
-			};
-
-
-			function createAndAppendDOMElement( properties ) {
-
-				// Helper function for creating and appending new DOM elements
-
-				var newElement = document.createElement( properties.type );
-
-				properties.parent.appendChild( newElement );
-
-				if ( properties.content ) {
-
-					newElement.textContent = properties.content;
-
-				}
-
-				return newElement;
-
 			}
 
 
-			function addClickHandlers ( linkElement, pageURL ) {
-
-				// Helper function for adding ClickHandlers to the page links
-
-				linkElement.onclick = function ( event ) {
-
-					event.preventDefault();
-
-					window.location.hash = pageURL;
-					createNewIframe();
-
-					panel.classList.add( 'collapsed' );
-
-				};
-
-			};
-
-
-// ----------------------------------------------------------------------------
-// Query Strings (optional)
-// ----------------------------------------------------------------------------
-
-
-//			(uncomment the following lines and the first line in updateFilter(), if you want query strings):
-
-//			filterInput.value = extractFromQueryString();
-//			updateFilter();
-//
-//
-//			function extractFromQueryString() {
-//
-//				var queryString = window.location.search;
-//
-//				if ( queryString.indexOf( '?q=' ) === -1 ) return '';
-//
-//				return queryString.substr( 3 );
-//
-//			}
-//
-//			function updateQueryString() {
-//
-//				var searchString = filterInput.value;
-//				var query = '';
-//
-//				if (searchString !== '') {
-//
-//					query = '?q=' + searchString;
-//
-//				}
-//
-//				window.history.replaceState( {} , '', window.location.pathname + query + window.location.hash ); 
-//
-//			}
-
-
-// ----------------------------------------------------------------------------
-// Filtering
-// ----------------------------------------------------------------------------
-
+			// Filtering
 
 			function updateFilter() {
 
-//			(uncomment the following line and the "Query strings" section, if you want query strings):
-//			updateQueryString();
+				// (uncomment the following line and the "Query strings" section, if you want query strings):
+				// updateQueryString();
 
 				var regExp = new RegExp( filterInput.value, 'gi' );
 
@@ -283,7 +260,6 @@
 				displayFilteredPanel();
 
 			}
-
 
 			function displayFilteredPanel() {
 
@@ -327,10 +303,7 @@
 			}
 
 
-// ----------------------------------------------------------------------------
-// Routing
-// ----------------------------------------------------------------------------
-
+			// Routing
 
 			function setUrlFragment( pageName ) {
 
@@ -351,7 +324,6 @@
 				}
 
 			}
-
 
 			function createNewIframe() {
 
@@ -377,7 +349,7 @@
 				if(hash) {
 
 					iframe.src = splitHash[ 0 ] + '.html' + splitHash[ 1 ];
-					subtitle = ' - ' + titles[ splitHash[ 0 ] ] + splitHash[ 1 ];
+					subtitle = titles[ splitHash[ 0 ] ] + splitHash[ 1 ] + ' - ';
 
 				} else {
 
@@ -387,15 +359,14 @@
 				}
 
 				document.body.replaceChild( iframe, oldIframe );
-				document.title = 'three.js docs' + subtitle;
+				document.title = subtitle + 'three.js docs';
 
 			}
 
-
-			function decomposePageName ( pageName, oldDelimiter, newDelimiter ) {
+			function decomposePageName( pageName, oldDelimiter, newDelimiter ) {
 
 				// Helper function for separating the member (if existing) from the pageName
-				// For example: 'Geometry.morphTarget' can be converted to 
+				// For example: 'Geometry.morphTarget' can be converted to
 				// ['Geometry', '.morphTarget'] or ['Geometry', '#morphTarget']
 				// Note: According RFC 3986 no '#' allowed inside of an URL fragment!
 
@@ -419,11 +390,7 @@
 
 			}
 
-
-// ----------------------------------------------------------------------------
-// ASCII Art ;-)
-// ----------------------------------------------------------------------------
-
+			//
 
 			console.log([
 				'    __     __',

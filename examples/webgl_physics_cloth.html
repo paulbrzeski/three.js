@@ -33,15 +33,18 @@
 		<script src="../build/three.js"></script>
 		<script src="js/libs/ammo.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
-		<script src="js/Detector.js"></script>
+		<script src="js/WebGL.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 
 		<script>
 
 			// Detects webgl
-			if ( ! Detector.webgl ) {
-					Detector.addGetWebGLMessage();
-					document.getElementById( 'container' ).innerHTML = "";
+
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+				document.getElementById( 'container' ).innerHTML = "";
+
 			}
 
 			// - Global variables -
@@ -91,16 +94,15 @@
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );
 
 				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xbfd1e5 );
 
-				camera.position.x = -12;
-				camera.position.y = 7;
-				camera.position.z =  4;
+				camera.position.set( -12, 7, 4 );
 
 				controls = new THREE.OrbitControls( camera );
-				controls.target.y = 2;
+				controls.target.set( 0, 2, 0 );
+				controls.update();
 
 				renderer = new THREE.WebGLRenderer();
-						renderer.setClearColor( 0xbfd1e5 );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.shadowMap.enabled = true;
@@ -302,7 +304,7 @@
 
 			function createParalellepiped( sx, sy, sz, mass, pos, quat, material ) {
 
-				var threeObject = new THREE.Mesh( new THREE.BoxGeometry( sx, sy, sz, 1, 1, 1 ), material );
+				var threeObject = new THREE.Mesh( new THREE.BoxBufferGeometry( sx, sy, sz, 1, 1, 1 ), material );
 				var shape = new Ammo.btBoxShape( new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
 				shape.setMargin( margin );
 
@@ -401,8 +403,6 @@
 				var deltaTime = clock.getDelta();
 
 				updatePhysics( deltaTime );
-
-				controls.update( deltaTime );
 
 				renderer.render( scene, camera );
 

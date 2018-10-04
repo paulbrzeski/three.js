@@ -41,6 +41,7 @@
 		<script src="js/crossfade/scenes.js"></script>
 		<script src="js/crossfade/gui.js"></script>
 		<script src="js/crossfade/transition.js"></script>
+		<script src="js/utils/BufferGeometryUtils.js"></script>
 
 		<script>
 
@@ -62,7 +63,6 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.sortObjects = false;
 				container.appendChild( renderer.domElement );
 
 				stats = new Stats();
